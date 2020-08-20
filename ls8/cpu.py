@@ -5,6 +5,7 @@ import sys
 HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
+MUL = 0b10100010
 
 class CPU:
     """Main CPU class."""
@@ -15,9 +16,18 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.running = True
+        # I think this was what Beej was talking about?
+        # TODO: figure out how to handle passing in arguments when
+        # using a branchtable
+        self.branchtable = {}
+        self.branchtable[HLT] = self.hlt
+        self.branchtable[LDI] = self.ldi
+        self.branchtable[PRN] = self.prn
+        self.branchtable[MUL] = self.mul
 
     ## RAM Functions
-    # Memory Address Register, holds the memory address we're  reading or writing
+    # Memory Address Register, holds the memory address we're 
+    # reading or writing
     #  Memory Data Register, holds the value to write or the 
     # value just read
     def ram_read(self,MAR):
@@ -26,26 +36,30 @@ class CPU:
     def ram_write(self, MDR, MAR):
         self.ram[MAR] = MDR
 
-    def load(self):
+    def load(self, file):
         """Load a program into memory."""
-
         address = 0
 
-        # For now, we've just hardcoded a program:
+        try:
+            with open(file) as f:
+                for line in f:
+                    # print(line)
+                    try:
+                        line = line.strip()
+                        line = line.split('#', 1)[0]
+                        line = int(line, 2)
+                        self.ram[address] = line
+                        address += 1
+                    except ValueError:
+                        pass
+        except FileNotFoundError:
+            print(f"Couldn't find file {file}")
+            sys.exit(1)
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -54,6 +68,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -77,17 +93,20 @@ class CPU:
 
         print()
     
-    def hlt(self):
+    def hlt(self, a=0, b=0):
         self.running = False
 
     def ldi(self, operand_a, operand_b):
-
         self.reg[operand_a] = operand_b
         self.pc += 3
     
-    def prn(self, operand_a):
+    def prn(self, operand_a, b=0):
         print(self.reg[operand_a])
         self.pc += 2
+
+    def mul(self, operand_a, operand_b):
+        self.alu("MUL", operand_a, operand_b)
+        self.pc += 3
 
     def run(self):
         """Run the CPU."""
@@ -98,9 +117,12 @@ class CPU:
             inst = self.ram[ir]
             operand_a = self.ram_read(ir + 1)
             operand_b = self.ram_read(ir + 2)
-            if inst == HLT:  # 0b00000001
-                self.hlt()
-            elif inst == LDI:  # 0b10000010
-                self.ldi(operand_a, operand_b)
-            elif inst == PRN:  # 0b01000111
-                self.prn(operand_a)
+            self.branchtable[inst](operand_a, operand_b)
+            # if inst == HLT:  # 0b00000001
+            #     self.hlt()
+            # elif inst == LDI:  # 0b10000010
+            #     self.ldi(operand_a, operand_b)
+            # elif inst == PRN:  # 0b01000111
+            #     self.prn(operand_a)
+            # elif inst == MUL:  
+            #     self.mul(operand_a, operand_b)
