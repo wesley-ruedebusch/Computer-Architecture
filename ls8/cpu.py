@@ -45,6 +45,7 @@ class CPU:
         self.branchtable[POP] = self.pop
         self.branchtable[CALL] = self.call
         self.branchtable[RET] = self.ret
+        #sprint
         self.branchtable[CMP] = self.cmp
         self.branchtable[JMP] = self.jmp
         self.branchtable[JEQ] = self.jeq
