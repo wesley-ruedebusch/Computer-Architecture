@@ -14,4 +14,6 @@ if len(sys.argv) != 2:
 file = sys.argv[1]
 
 cpu.load(file)
+cpu.trace
+
 cpu.run()
